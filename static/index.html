@@ -220,7 +220,24 @@
       period: "",
       source: "",
       missing: "",
+      fetched: "",
     };
+
+    function onLaptop() {
+      return location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    }
+
+    async function readJson(url) {
+      const response = await fetch(url);
+      let body = {};
+      try {
+        body = await response.json();
+      } catch (err) {
+        body = {};
+      }
+      if (!response.ok) throw new Error(body.detail || "Data belum tersedia.");
+      return body;
+    }
 
     const idr = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 });
     const numFmt = new Intl.NumberFormat("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -317,7 +334,8 @@
       document.getElementById("table").hidden = visible.length === 0;
       tbody.innerHTML = visible.map((row) => state.mode === "invest" ? investRow(row) : tradingRow(row)).join("");
       const asOf = state.rows[0] ? dateId(state.rows[0].as_of) : "";
-      const shared = `<strong>Harga per ${asOf}.</strong> LQ45 periode ${esc(state.period)}. ${esc(state.source)}${esc(state.missing)}`;
+      const fetched = state.fetched ? " Diunduh " + esc(state.fetched) + " WIB." : "";
+      const shared = `<strong>Harga per ${asOf}.</strong> LQ45 periode ${esc(state.period)}. ${esc(state.source)}${fetched}${esc(state.missing)}`;
       document.getElementById("meta").innerHTML = state.mode === "invest"
         ? shared + " Mode ini untuk dipegang sekitar 1–6 bulan. Skornya 55% fundamental dan 45% tren harga. Cocokkan laba dan dividen ke laporan BEI."
         : shared + " Mode trading untuk beberapa hari sampai empat minggu. Biaya jual-beli pulang-pergi kira-kira 0,3–0,5%. Cek sekali setelah pukul 16.00 WIB.";
@@ -360,12 +378,23 @@
       document.getElementById("table").hidden = true;
       showError("");
       try {
-        const response = await fetch("/api/board" + (refresh ? "?refresh=true" : ""));
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.detail || "Gagal mengambil harga.");
+        const url = onLaptop()
+          ? "/api/board" + (refresh ? "?refresh=true" : "")
+          : "data/board.json" + (refresh ? "?t=" + Date.now() : "");
+        const body = await readJson(url);
         state.rows = body.rows;
         state.period = body.period || "";
         state.source = body.source || "";
+        state.fetched = body.fetched_at
+          ? new Date(body.fetched_at * 1000).toLocaleString("id-ID", {
+              timeZone: "Asia/Jakarta",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "";
         state.missing = body.missing && body.missing.length ? " Tidak ketemu: " + body.missing.join(", ") + "." : "";
         document.getElementById("loading").hidden = true;
         render();
@@ -429,13 +458,16 @@
       backdrop.classList.add("open");
       drawer.setAttribute("aria-hidden", "false");
       try {
-        const response = await fetch("/api/saham/" + encodeURIComponent(code));
-        const row = await response.json();
-        if (!response.ok) throw new Error(row.detail || "Gagal membuka saham.");
-        state.detail = row;
+        const url = onLaptop()
+          ? "/api/saham/" + encodeURIComponent(code)
+          : "data/" + encodeURIComponent(code) + ".json";
+        state.detail = await readJson(url);
         paintDetail();
       } catch (err) {
-        document.getElementById("detail").innerHTML = `<p>${err.message}</p>`;
+        const message = onLaptop()
+          ? err.message
+          : "Kode ini tidak ada di LQ45 pada situs ini.";
+        document.getElementById("detail").innerHTML = `<p>${esc(message)}</p>`;
       }
     }
 
