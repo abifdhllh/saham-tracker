@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Saham Indonesia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,650&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --paper: #efe7da;
+      --paper-2: #f7f2ea;
+      --ink: #221c16;
+      --muted: #6d6256;
+      --line: #d9cebf;
+      --green: #1d6b45;
+      --green-bg: #e5f2ea;
+      --amber: #8a5a12;
+      --amber-bg: #f8efd8;
+      --stone: #5c5348;
+      --stone-bg: #ebe4d8;
+      --down: #8d3b32;
+      --up: #1d6b45;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 400px at 10% -10%, #f6f1e7 0%, transparent 60%),
+        var(--paper);
+      font-family: "Source Sans 3", "Avenir Next", "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.45;
+    }
+
+    .wrap { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+    header { padding: 36px 0 8px; }
+    h1 {
+      font-family: Newsreader, "Iowan Old Style", Palatino, serif;
+      font-size: clamp(40px, 6vw, 64px);
+      font-weight: 500;
+      letter-spacing: -0.03em;
+      line-height: 0.95;
+      margin: 0;
+    }
+    .lede { max-width: 640px; color: var(--muted); margin: 12px 0 0; }
+
+    .note, .error, .panel, .table-card {
+      background: var(--paper-2);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+    }
+    .note { margin: 20px 0; padding: 14px 16px; color: var(--muted); font-size: 14.5px; }
+    .note strong { color: var(--ink); font-weight: 650; }
+
+    .toolbar { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin: 8px 0 14px; }
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; }
+    button, .search input {
+      font: inherit;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--ink);
+    }
+    .modes, .filters { display: flex; gap: 8px; flex-wrap: wrap; }
+    .modes { margin: 18px 0 4px; }
+    .modes button, .filters button, .ghost { padding: 8px 14px; cursor: pointer; }
+    .modes button[aria-pressed="true"],
+    .filters button[aria-pressed="true"] { background: var(--ink); color: #f7f2ea; border-color: var(--ink); }
+    .search { display: flex; gap: 8px; }
+    .search input { padding: 8px 14px; width: 140px; background: var(--paper-2); }
+    .ghost { background: var(--paper-2); }
+
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+    .stat { padding: 14px 16px; }
+    .stat b { display: block; font-family: Newsreader, serif; font-size: 34px; font-weight: 500; line-height: 1; }
+    .stat span { color: var(--muted); font-size: 14px; }
+    .stat.akumulasi b { color: var(--green); }
+    .stat.tunggu b { color: var(--amber); }
+
+    .score { font-family: Newsreader, serif; font-size: 28px; font-weight: 500; line-height: 1; }
+    .score.sesuai { color: var(--green); }
+    .score.cukup { color: var(--amber); }
+    .score.kurang { color: var(--stone); }
+    .rank { color: var(--muted); font-variant-numeric: tabular-nums; width: 36px; }
+    .bar { height: 6px; background: var(--stone-bg); border-radius: 99px; overflow: hidden; margin: 6px 0; }
+    .bar span { display: block; height: 100%; background: var(--green); }
+    .part { margin: 12px 0 16px; }
+    .part-top { display: flex; justify-content: space-between; gap: 12px; font-weight: 650; }
+    .part p, .metrics { color: var(--muted); font-size: 14.5px; margin: 0; }
+    .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin: 8px 0 16px; }
+    .metrics b { color: var(--ink); font-weight: 650; }
+    h3 { font-family: Newsreader, serif; font-weight: 500; font-size: 26px; margin: 22px 0 8px; }
+
+    .table-card { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 980px; }
+    th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    th { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 650; }
+    tr { cursor: pointer; }
+    tbody tr:hover { background: #f3ecdf; }
+    .code { font-weight: 700; letter-spacing: 0.04em; }
+    .name { display: block; color: var(--muted); font-weight: 400; font-size: 13px; }
+    .num { font-variant-numeric: tabular-nums; text-align: right; }
+    th.num { text-align: right; }
+    .up { color: var(--up); }
+    .down { color: var(--down); }
+
+    .pill {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+    .pill.sesuai, .pill.akumulasi { background: var(--green-bg); color: var(--green); }
+    .pill.cukup, .pill.tunggu { background: var(--amber-bg); color: var(--amber); }
+    .pill.kurang, .pill.tinjau { background: var(--stone-bg); color: var(--stone); }
+
+    .empty, .loading { padding: 28px 16px; color: var(--muted); }
+    .error { margin: 12px 0; padding: 14px 16px; color: var(--down); display: none; }
+
+    .backdrop { position: fixed; inset: 0; background: rgba(34, 28, 22, 0.35); opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+    .backdrop.open { opacity: 1; pointer-events: auto; }
+    .drawer {
+      position: fixed; top: 0; right: 0; height: 100%; width: min(560px, 100%);
+      background: var(--paper-2); border-left: 1px solid var(--line);
+      transform: translateX(100%); transition: transform 0.22s ease;
+      overflow: auto; padding: 22px 22px 40px;
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer h2 { font-family: Newsreader, serif; font-weight: 500; font-size: 36px; margin: 8px 0 0; letter-spacing: -0.03em; }
+    .drawer .price { font-variant-numeric: tabular-nums; font-size: 28px; margin: 8px 0; }
+    .summary { font-size: 17px; }
+    .reasons { padding-left: 18px; }
+    .reasons li { margin: 6px 0; }
+    .links { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 16px; }
+    .links a { color: var(--green); }
+    svg.chart { width: 100%; height: 220px; margin: 12px 0; background: #f3ecdf; border-radius: 12px; }
+    .legend { display: flex; gap: 14px; color: var(--muted); font-size: 13px; }
+    .swatch { display: inline-block; width: 18px; height: 3px; margin-right: 6px; vertical-align: middle; }
+    .close-btn { float: right; }
+
+    @media (max-width: 720px) {
+      .stats { grid-template-columns: 1fr; }
+      .search { width: 100%; }
+      .search input { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Saham Indonesia</h1>
+      <p class="lede" id="lede">Dua cara baca daftar yang sama. Trading untuk beberapa hari sampai empat minggu. Investasi untuk dipegang sekitar 1–6 bulan, dengan bobot lebih besar ke fundamental.</p>
+      <div class="modes" role="group" aria-label="Mode">
+        <button type="button" data-mode="trading" aria-pressed="true">Trading</button>
+        <button type="button" data-mode="invest" aria-pressed="false">Investasi 1–6 bulan</button>
+      </div>
+    </header>
+    <p class="note" id="meta">Mengambil harga penutupan…</p>
+    <div class="error" id="error"></div>
+
+    <div class="stats" id="podium">
+      <div class="stat panel"><b>–</b><span>peringkat 1</span></div>
+      <div class="stat panel"><b>–</b><span>peringkat 2</span></div>
+      <div class="stat panel"><b>–</b><span>peringkat 3</span></div>
+    </div>
+
+    <div class="toolbar">
+      <div class="filters" role="group" aria-label="Saringan">
+        <button type="button" data-filter="semua" aria-pressed="true">Semua</button>
+        <button type="button" data-filter="sesuai" aria-pressed="false">Siap dibeli</button>
+        <button type="button" data-filter="cukup" aria-pressed="false">Tunggu</button>
+        <button type="button" data-filter="kurang" aria-pressed="false">Lewati</button>
+      </div>
+      <form class="search" id="search-form">
+        <input id="search" name="code" placeholder="Kode, mis. BBCA" maxlength="6" autocomplete="off" />
+        <button class="ghost" type="submit">Lihat</button>
+        <button class="ghost" id="refresh" type="button">Muat ulang</button>
+      </form>
+    </div>
+
+    <div class="table-card">
+      <div class="loading" id="loading">Mengambil harga dan angka fundamental. Pertama kali bisa sekitar satu menit, lalu disimpan di memori selama 30 menit.</div>
+      <table id="table" hidden>
+        <thead>
+          <tr>
+            <th class="rank">#</th>
+            <th>Saham</th>
+            <th>Setup</th>
+            <th class="num">Harga</th>
+            <th class="num">Batas rugi</th>
+            <th class="num">Target</th>
+            <th class="num">Risiko</th>
+            <th class="num">Transaksi harian</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="empty" hidden>Tidak ada saham di saringan ini.</div>
+    </div>
+  </div>
+
+  <div class="backdrop" id="backdrop"></div>
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <button class="ghost close-btn" id="close" type="button">Tutup</button>
+    <div id="detail"></div>
+  </aside>
+
+  <script>
+    const state = {
+      rows: [],
+      filter: "semua",
+      mode: localStorage.getItem("saham-mode") === "invest" ? "invest" : "trading",
+      detail: null,
+      period: "",
+      source: "",
+      missing: "",
+    };
+
+    const idr = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 });
+    const numFmt = new Intl.NumberFormat("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    function esc(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+      }[ch]));
+    }
+    const pctFmt = numFmt;
+    function rupiahShort(value) {
+      if (value === null || value === undefined) return "–";
+      if (value >= 1e12) return "Rp " + numFmt.format(value / 1e12) + " triliun";
+      if (value >= 1e9) return "Rp " + numFmt.format(value / 1e9) + " miliar";
+      if (value >= 1e6) return "Rp " + numFmt.format(value / 1e6) + " juta";
+      return idr.format(value);
+    }
+    function plain(value, suffix) {
+      if (value === null || value === undefined) return "–";
+      return numFmt.format(value) + (suffix || "");
+    }
+
+    function pct(value) {
+      if (value === null || value === undefined) return "–";
+      const text = (value > 0 ? "+" : "") + pctFmt.format(value) + "%";
+      const cls = value > 0 ? "up" : value < 0 ? "down" : "";
+      return `<span class="${cls}">${text}</span>`;
+    }
+
+    function dateId(iso) {
+      if (!iso) return "";
+      return new Date(iso + "T00:00:00").toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+    }
+
+    function showError(message) {
+      const el = document.getElementById("error");
+      el.style.display = message ? "block" : "none";
+      el.textContent = message || "";
+    }
+
+    function viewOf(row) {
+      return state.mode === "invest" ? row.invest : row.trading;
+    }
+
+    function applyModeChrome() {
+      document.querySelectorAll(".modes button").forEach((button) => {
+        button.setAttribute("aria-pressed", button.dataset.mode === state.mode ? "true" : "false");
+      });
+      const filters = {
+        trading: [["semua", "Semua"], ["sesuai", "Siap dibeli"], ["cukup", "Tunggu"], ["kurang", "Lewati"]],
+        invest: [["semua", "Semua"], ["sesuai", "Paling sesuai"], ["cukup", "Cukup layak"], ["kurang", "Kurang sesuai"]],
+      };
+      document.querySelector(".filters").innerHTML = filters[state.mode].map(([id, label]) => `
+        <button type="button" data-filter="${id}" aria-pressed="${state.filter === id ? "true" : "false"}">${label}</button>
+      `).join("");
+      const heads = state.mode === "invest"
+        ? ["#", "Saham", "Skor", "Fundamental", "Teknikal", "Harga", "Dividen", "PER", "ROE", "Catatan"]
+        : ["#", "Saham", "Setup", "Harga", "Batas rugi", "Target", "Risiko", "Transaksi harian"];
+      document.querySelector("#table thead tr").innerHTML = heads.map((label, index) => {
+        const numeric = index > 1 && label !== "Catatan" && label !== "Setup";
+        return `<th class="${numeric ? "num" : label === "#" ? "rank" : ""}">${label}</th>`;
+      }).join("");
+    }
+
+    function render() {
+      applyModeChrome();
+      const tbody = document.getElementById("rows");
+      const visible = state.rows
+        .filter((row) => state.filter === "semua" || viewOf(row).grade === state.filter)
+        .sort((a, b) => viewOf(a).rank - viewOf(b).rank);
+
+      if (state.mode === "invest") {
+        const top = [...state.rows].sort((a, b) => a.invest.rank - b.invest.rank).slice(0, 3);
+        document.getElementById("podium").innerHTML = top.map((row) => `
+          <div class="stat panel">
+            <b class="score ${esc(row.invest.grade)}">${row.invest.score}</b>
+            <span>${row.invest.rank}. ${esc(row.code)} · ${esc(row.name)}</span>
+          </div>
+        `).join("");
+      } else {
+        const count = (grade) => state.rows.filter((row) => row.trading.grade === grade).length;
+        document.getElementById("podium").innerHTML = [
+          ["sesuai", count("sesuai"), "siap dibeli"],
+          ["cukup", count("cukup"), "tunggu harga mendingin"],
+          ["kurang", count("kurang"), "lewati"],
+        ].map(([grade, total, caption]) => `
+          <div class="stat panel">
+            <b class="score ${grade}">${total}</b>
+            <span>${caption}</span>
+          </div>
+        `).join("");
+      }
+
+      document.getElementById("empty").hidden = visible.length !== 0;
+      document.getElementById("table").hidden = visible.length === 0;
+      tbody.innerHTML = visible.map((row) => state.mode === "invest" ? investRow(row) : tradingRow(row)).join("");
+      const asOf = state.rows[0] ? dateId(state.rows[0].as_of) : "";
+      const shared = `<strong>Harga per ${asOf}.</strong> LQ45 periode ${esc(state.period)}. ${esc(state.source)}${esc(state.missing)}`;
+      document.getElementById("meta").innerHTML = state.mode === "invest"
+        ? shared + " Mode ini untuk dipegang sekitar 1–6 bulan. Skornya 55% fundamental dan 45% tren harga. Cocokkan laba dan dividen ke laporan BEI."
+        : shared + " Mode trading untuk beberapa hari sampai empat minggu. Biaya jual-beli pulang-pergi kira-kira 0,3–0,5%. Cek sekali setelah pukul 16.00 WIB.";
+    }
+
+    function tradingRow(row) {
+      const view = row.trading;
+      return `
+        <tr data-code="${esc(row.code)}">
+          <td class="rank">${view.rank}</td>
+          <td><span class="code">${esc(row.code)}</span><span class="name">${esc(row.name)}</span><span class="name">${esc(row.industry || "")}</span></td>
+          <td><span class="pill ${esc(view.grade)}">${esc(view.label)}</span></td>
+          <td class="num">${idr.format(row.price)}<span class="name">${pct(row.change_pct)}</span></td>
+          <td class="num">${row.stop ? idr.format(row.stop) : "–"}<span class="name">${plain(row.risk_pct, "%")}</span></td>
+          <td class="num">${row.target ? idr.format(row.target) : "–"}<span class="name">${plain(row.reward_pct, "%")}</span></td>
+          <td class="num">${rupiahShort(row.risk_per_lot)}<span class="name">per lot</span></td>
+          <td class="num">${rupiahShort(row.avg_value)}</td>
+        </tr>`;
+    }
+
+    function investRow(row) {
+      const view = row.invest;
+      return `
+        <tr data-code="${esc(row.code)}">
+          <td class="rank">${view.rank}</td>
+          <td><span class="code">${esc(row.code)}</span><span class="name">${esc(row.name)}</span><span class="name">${esc(row.industry || "")}</span></td>
+          <td class="num"><span class="score ${esc(view.grade)}">${view.score}</span></td>
+          <td class="num">${view.fundamental}</td>
+          <td class="num">${view.technical}</td>
+          <td class="num">${idr.format(row.price)}<span class="name">${pct(row.change_pct)}</span></td>
+          <td class="num">${plain(row.dividend_yield, "%")}</td>
+          <td class="num">${plain(row.pe, "×")}</td>
+          <td class="num">${plain(row.roe, "%")}</td>
+          <td><span class="pill ${esc(view.grade)}">${esc(view.label)}</span></td>
+        </tr>`;
+    }
+
+    async function loadBoard(refresh) {
+      document.getElementById("loading").hidden = false;
+      document.getElementById("table").hidden = true;
+      showError("");
+      try {
+        const response = await fetch("/api/board" + (refresh ? "?refresh=true" : ""));
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.detail || "Gagal mengambil harga.");
+        state.rows = body.rows;
+        state.period = body.period || "";
+        state.source = body.source || "";
+        state.missing = body.missing && body.missing.length ? " Tidak ketemu: " + body.missing.join(", ") + "." : "";
+        document.getElementById("loading").hidden = true;
+        render();
+      } catch (err) {
+        document.getElementById("loading").hidden = true;
+        showError(err.message || "Gagal mengambil harga.");
+      }
+    }
+
+    function chartSvg(chart) {
+      const invest = state.mode === "invest";
+      const series = invest ? [chart.close, chart.ma50, chart.ma200] : [chart.close, chart.ma20, chart.ma50];
+      const all = series.flat().filter((v) => v !== null && v !== undefined);
+      if (!all.length) return "";
+      const min = Math.min(...all);
+      const max = Math.max(...all);
+      const span = max - min || 1;
+      const w = 600;
+      const h = 188;
+      const pathFor = (values, color, width, dash) => {
+        let d = "";
+        let pen = false;
+        values.forEach((value, i) => {
+          if (value === null || value === undefined) { pen = false; return; }
+          const x = 8 + (i / Math.max(values.length - 1, 1)) * w;
+          const y = 8 + (1 - (value - min) / span) * h;
+          d += `${pen ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)} `;
+          pen = true;
+        });
+        const dashAttr = dash ? ` stroke-dasharray="${dash}"` : "";
+        return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}"${dashAttr} />`;
+      };
+      return `<svg class="chart" viewBox="0 0 616 204" role="img" aria-label="Grafik harga satu tahun">
+        ${invest ? pathFor(chart.ma200, "#8a5a12", 1.5, "4 4") : pathFor(chart.ma50, "#8a5a12", 1.5, "4 4")}
+        ${invest ? pathFor(chart.ma50, "#8d7b68", 1.5, "") : pathFor(chart.ma20, "#8d7b68", 1.5, "")}
+        ${pathFor(chart.close, "#1d6b45", 2, "")}
+      </svg>
+      <div class="legend">
+        <span><i class="swatch" style="background:#1d6b45"></i>Harga</span>
+        <span><i class="swatch" style="background:#8d7b68"></i>${invest ? "Rata-rata 50 hari" : "Rata-rata 20 hari"}</span>
+        <span><i class="swatch" style="background:#8a5a12"></i>${invest ? "Rata-rata 200 hari" : "Rata-rata 50 hari"}</span>
+      </div>`;
+    }
+
+    function partsHtml(title, parts) {
+      if (!parts || !parts.length) return "";
+      return `<h3>${title}</h3>` + parts.map((part) => `
+        <div class="part">
+          <div class="part-top"><span>${esc(part.label)}</span><b>${part.points}/${part.max}</b></div>
+          <div class="bar"><span style="width:${part.max ? Math.round(part.points / part.max * 100) : 0}%"></span></div>
+          <p>${esc(part.note)}</p>
+        </div>
+      `).join("");
+    }
+
+    async function openDetail(code) {
+      const drawer = document.getElementById("drawer");
+      const backdrop = document.getElementById("backdrop");
+      document.getElementById("detail").innerHTML = "<p>Membuka " + code + "…</p>";
+      drawer.classList.add("open");
+      backdrop.classList.add("open");
+      drawer.setAttribute("aria-hidden", "false");
+      try {
+        const response = await fetch("/api/saham/" + encodeURIComponent(code));
+        const row = await response.json();
+        if (!response.ok) throw new Error(row.detail || "Gagal membuka saham.");
+        state.detail = row;
+        paintDetail();
+      } catch (err) {
+        document.getElementById("detail").innerHTML = `<p>${err.message}</p>`;
+      }
+    }
+
+    function paintDetail() {
+      const row = state.detail;
+      if (!row) return;
+      const view = viewOf(row);
+      const rankText = view && view.rank ? "Peringkat " + view.rank + " · " : "";
+      const tradingBlock = `
+          <div class="metrics">
+            <div>Harga tutup <b>${idr.format(row.price)}</b></div>
+            <div>Rata-rata 20 hari <b>${row.ma20 ? idr.format(row.ma20) : "–"}</b></div>
+            <div>Batas rugi <b>${row.stop ? idr.format(row.stop) : "–"}</b></div>
+            <div>Target <b>${row.target ? idr.format(row.target) : "–"}</b></div>
+            <div>Risiko <b>${plain(row.risk_pct, "%")}</b></div>
+            <div>Target naik <b>${plain(row.reward_pct, "%")}</b></div>
+            <div>Rugi per lot <b>${rupiahShort(row.risk_per_lot)}</b></div>
+            <div>Untung per lot <b>${rupiahShort(row.reward_per_lot)}</b></div>
+            <div>Transaksi harian <b>${rupiahShort(row.avg_value)}</b></div>
+            <div>RSI <b>${plain(row.rsi, "")}</b></div>
+          </div>
+          <p class="lede">Kalau batas rugi kena, kerugian satu lot sebesar angka di atas. Bagi uang yang sanggup kamu rugi dengan angka itu untuk dapat jumlah lot.</p>
+          ${partsHtml("Aturan setup", row.swing_parts)}
+          <p class="lede">Banyak setup akan kena batas rugi. Yang membuatnya terkendali adalah menutup saat batas itu tersentuh.</p>`;
+      const investBlock = `
+          <p class="score ${esc(view.grade)}">${view.score}<span class="name"> skor investasi</span></p>
+          <div class="metrics">
+            <div>Fundamental <b>${view.fundamental}</b></div>
+            <div>Teknikal <b>${view.technical}</b></div>
+            <div>Dividen <b>${plain(row.dividend_yield, "%")}</b></div>
+            <div>Dibayar <b>${row.dividend_years} dari 5 tahun</b></div>
+            <div>PER <b>${plain(row.pe, "×")}</b></div>
+            <div>PBV <b>${plain(row.pbv, "×")}</b></div>
+            <div>ROE <b>${plain(row.roe, "%")}</b></div>
+            <div>Payout <b>${plain(row.payout, "%")}</b></div>
+            <div>Laba <b>${plain(row.earnings_growth, "%")}</b></div>
+            <div>Pendapatan <b>${plain(row.revenue_growth, "%")}</b></div>
+            <div>Utang/ekuitas <b>${row.debt_ratio === null ? "–" : plain(row.debt_ratio, "×")}</b></div>
+            <div>Dari MA 200 <b>${pct(row.dist200)}</b></div>
+          </div>
+          ${partsHtml("Fundamental", row.fundamental_parts)}
+          ${partsHtml("Tren untuk 1–6 bulan", row.technical_parts)}
+          <p class="lede">Angka fundamental dari Yahoo Finance. Yang tidak masuk akal tidak ikut skor. Cocokkan ke laporan di situs BEI sebelum menambah.</p>`;
+      document.getElementById("detail").innerHTML = `
+          <p class="name">${esc(row.industry || row.name)}</p>
+          <h2>${esc(row.code)}</h2>
+          <div class="price">${idr.format(row.price)} ${pct(row.change_pct)}</div>
+          <p>${rankText}harga per ${dateId(row.as_of)} · <span class="pill ${esc(view.grade)}">${esc(view.label)}</span></p>
+          <p class="summary">${esc(view.summary)}</p>
+          ${state.mode === "invest" ? investBlock : tradingBlock}
+          ${chartSvg(row.chart)}
+          <div class="links">
+            <a href="${row.quote_url}" target="_blank" rel="noreferrer">Lihat di Yahoo</a>
+            <a href="${row.report_url}" target="_blank" rel="noreferrer">Laporan keuangan di BEI</a>
+          </div>
+        `;
+    }
+
+    function closeDrawer() {
+      document.getElementById("drawer").classList.remove("open");
+      document.getElementById("backdrop").classList.remove("open");
+      document.getElementById("drawer").setAttribute("aria-hidden", "true");
+    }
+
+    document.getElementById("rows").addEventListener("click", (event) => {
+      const row = event.target.closest("tr");
+      if (row) openDetail(row.dataset.code);
+    });
+    document.querySelector(".filters").addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      state.filter = button.dataset.filter;
+      render();
+    });
+    document.querySelector(".modes").addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      state.mode = button.dataset.mode;
+      state.filter = "semua";
+      localStorage.setItem("saham-mode", state.mode);
+      render();
+      if (state.detail && document.getElementById("drawer").classList.contains("open")) paintDetail();
+    });
+    document.getElementById("search-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const code = document.getElementById("search").value.trim().toUpperCase();
+      if (code) openDetail(code);
+    });
+    document.getElementById("refresh").addEventListener("click", () => loadBoard(true));
+    document.getElementById("close").addEventListener("click", closeDrawer);
+    document.getElementById("backdrop").addEventListener("click", closeDrawer);
+
+    applyModeChrome();
+    loadBoard(false);
+  </script>
+</body>
+</html>
