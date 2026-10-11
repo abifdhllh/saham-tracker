@@ -1,0 +1,7 @@
+name = "saham-tracker"
+compatibility_date = "2026-10-11"
+
+[assets]
+directory = "./static"
+
+[previews]
